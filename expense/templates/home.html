@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap');
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Montserrat', sans-serif;
+    }
+
+    body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 30px 10px;
+    }
+
+    .card {
+        max-width: 500px;
+        margin: auto;
+        color: black;
+        border-radius: 20px;
+    }
+
+    p {
+        margin: 0px;
+    }
+
+    .container .h8 {
+        font-size: 30px;
+        font-weight: 800;
+        text-align: center;
+    }
+
+    .btn.btn-primary {
+        width: 100%;
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 15px;
+        background-image: linear-gradient(to right, #77A1D3 0%, #79CBCA 51%, #77A1D3 100%);
+        border: none;
+        transition: 0.5s;
+        background-size: 200% auto;
+    }
+
+    .btn.btn.btn-primary:hover {
+        background-position: right center;
+        color: #fff;
+        text-decoration: none;
+    }
+
+    .btn.btn-primary:hover .fas.fa-arrow-right {
+        transform: translate(15px);
+        transition: transform 0.2s ease-in;
+    }
+
+    .form-control {
+        color: white;
+        background-color: #223C60;
+        border: 2px solid transparent;
+        height: 60px;
+        padding-left: 20px;
+        vertical-align: middle;
+        margin-bottom: 15px; /* Added margin-bottom */
+    }
+
+    .form-control:focus {
+        color: white;
+        background-color: #0C4160;
+        border: 2px solid #2d4dda;
+        box-shadow: none;
+    }
+
+    .text {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    ::placeholder {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .form-group.join {
+        display: flex;
+    }
+
+    .form-group.join .form-control {
+        flex: 1;
+        margin-right: 10px; /* Adjust as needed */
+    }
+
+    .plus-button {
+        background-color: #0C4160;
+        border: none;
+        color: white;
+        padding: 15px 32px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 40px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 50%;
+        height: 60px;
+        width: 60px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .plus-button:hover {
+        background-color: #0C4160;
+    }
+</style>
+<div class="container text-center">
+    <div class="row row-cols-2">
+        <div class="col">
+            <div style="font-size: 36px; ">
+                Welcome to Expense App
+            </div>
+        </div>
+        <div class="col">
+            <div style="font-size: 36px;">
+                User: {{balance}}
+            </div>
+        </div>
+        <div class="col">
+            <img class="img-fluid rounded-start w-100 h-150 object-fit-cover"
+                loading="lazy"
+                src="{% static 'money1.svg' %}"
+                alt="Welcome back you've been missed!"
+                style="margin-top: 50px; margin-bottom: 50px" />
+        </div>
+        <div class="col" style="margin-top: 100px;">
+            <div class="container p-0">
+                <div class="row gx-3">
+                    <div class="col-12">
+                        <div class="d-flex flex-column">
+                            {% for message in messages %}
+                            <div class="alert alert-danger" role="alert">
+                                {{ message }}
+                            </div>
+                            {% endfor %}
+                            <form id="expenseForm" method="POST" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <div id="receiverInputs">
+                                    <div class="form-group">
+                                        <input type="number" name="total_amount" class="form-control" placeholder="Total Amount">
+                                    </div>
+                                    <div class="form-group join"> <!-- Added join class -->
+                                        <select name="receiver" class="form-control">
+                                            <option value="" selected disabled>Select Receiver</option>
+                                            {% for user in users %}
+                                                <option value="{{ user.id }}">{{ user.username }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <input type="number" name="amount" class="form-control" placeholder="Amount">
+                                    </div>
+                                </div>
+                                <button type="button" class="plus-button" id="addReceiver">+</button>
+                                <div class="form-group">
+                                    <input type="text" name="description" class="form-control" placeholder="Description">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Submit</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('addReceiver').addEventListener('click', function() {
+            var receiverInputs = document.getElementById('receiverInputs');
+            var newReceiverInput = document.createElement('div');
+            newReceiverInput.innerHTML = `
+                <div class="form-group join">
+                    <select name="receiver" class="form-control">
+                        <option value="" selected disabled>Select Receiver</option>
+                        {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.username }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="number" name="amount" class="form-control" placeholder="Amount">
+                </div>
+            `;
+            receiverInputs.appendChild(newReceiverInput);
+        });
+    });
+</script>
+{% endblock %}
