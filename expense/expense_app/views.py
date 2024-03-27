@@ -9,49 +9,48 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.db.models import Sum
 
-
 @login_required
 def home(request):
     current_user = request.user
     users = User.objects.all()
-    if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            total_amount = int(request.POST.get("total_amount")) 
-            receivers = request.POST.getlist('receiver')
-            amounts = [int(amount) for amount in request.POST.getlist('amount')] 
-            description = request.POST.get('description') 
-            print(f"Receivers => {receivers} | Amounts => {amounts} | Description => {description}")
-            if total_amount == sum(amounts):
-                if len(receivers) == len(amounts):
-                    for receiver, amount in zip(receivers, amounts):
-                        form_instance = TransactionForm(request.POST)  
-                        if form_instance.is_valid():
-                            transaction = form_instance.save(commit=False)
-                            transaction.sender = request.user
-                            transaction.receiver = User.objects.get(pk=receiver)
-                            transaction.amount = amount
-                            transaction.description = description  
-                            transaction.save()
-                            print(f"Receiver {receiver}: saved {amount}")
-                        else:
-                            print("Form is not valid.")
-                            messages.error(request, 'Form is not valid. Please check your input.')
-                            return redirect('home')
-                    messages.success(request, 'Expenses split successfully.' ,{'tag': "success"})
-                    return redirect('home')
-                else:
-                    messages.error(request, 'Form data lengths are not consistent.')
-                    return redirect('home')
-            else:
-                messages.error(request, 'Total amount does not match the sum of participants\' amounts.')
-                return redirect('home')
-        else:
+
+    if request.method != 'POST':
+        form = TransactionForm()
+        return render(request, 'home.html', {'form': form, 'balance': current_user, 'users': users})
+
+    form = TransactionForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, 'Form is not valid. Please check your input.')
+        return redirect('home')
+
+    total_amount = int(request.POST.get("total_amount", 0))
+    receivers = request.POST.getlist('receiver')
+    amounts = [int(amount) for amount in request.POST.getlist('amount')]
+    description = request.POST.get('description')
+
+    if total_amount != sum(amounts):
+        messages.error(request, "Total amount does not match the sum of participants' amounts.")
+        return redirect('home')
+
+    if len(receivers) != len(amounts):
+        messages.error(request, 'Form data lengths are not consistent.')
+        return redirect('home')
+
+    for receiver, amount in zip(receivers, amounts):
+        form_instance = TransactionForm(request.POST)
+        if not form_instance.is_valid():
             messages.error(request, 'Form is not valid. Please check your input.')
             return redirect('home')
-    else:
-        form = TransactionForm()
-    return render(request, 'home.html', {'form': form, "balance": current_user , "users": users})
+
+        transaction = form_instance.save(commit=False)
+        transaction.sender = request.user
+        transaction.receiver = User.objects.get(pk=receiver)
+        transaction.amount = amount
+        transaction.description = description
+        transaction.save()
+        messages.success(request, 'Expenses split successfully.', {'tag': "success"})
+
+    return redirect('home')
 
 def login_view(request):
     if request.method == "POST":
