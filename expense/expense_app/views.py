@@ -59,7 +59,10 @@ def home(request):
     except Exception as e:
         print(e)
     finally:
-        amounts = [int(amount) for amount in request.POST.getlist('amount')]
+        try:
+            amounts = [int(amount) for amount in request.POST.getlist('amount')]
+        except Exception as e:
+            print(e)
 
     # For equally Splitting
         
