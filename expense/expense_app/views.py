@@ -19,14 +19,66 @@ def home(request):
         return render(request, 'home.html', {'form': form, 'balance': current_user, 'users': users})
 
     form = TransactionForm(request.POST)
-    if not form.is_valid():
-        messages.error(request, 'Form is not valid. Please check your input.')
-        return redirect('home')
-
+   
     total_amount = int(request.POST.get("total_amount", 0))
     receivers = request.POST.getlist('receiver')
-    amounts = [int(amount) for amount in request.POST.getlist('amount')]
+    amounts = [(amount) for amount in request.POST.getlist('amount')]
     description = request.POST.get('description')
+
+    print(f"Amounts == {amounts}")
+
+    
+    # For Percentage wise spliting
+
+    try:
+        if '%' in amounts[0]:
+            try:
+                percentages = [float(amount.strip('%')) for amount in amounts]
+                total_percentage = sum(percentages)
+                if total_percentage != 100:
+                    messages.error(request, 'Total percentage should be 100%.')
+                    return redirect('home')
+
+                amounts = [(percentage / 100) * total_amount for percentage in percentages]
+                print(f"Amounts after Percent => {amounts}")
+
+                for receiver , amount in zip(receivers , amounts):
+                    form_instance = TransactionForm()
+                    transaction = form_instance.save(commit=False)
+                    transaction.sender = request.user
+                    transaction.receiver = User.objects.get(pk=receiver)
+                    transaction.amount = amount
+                    transaction.description = description
+                    transaction.save()
+                messages.success(request, f'Expenses split successfully.', {'tag': "success"})
+                return redirect('home')
+
+            except ValueError:
+                messages.error(request, 'Invalid percentage format.')
+                return redirect('home')
+    except Exception as e:
+        print(e)
+    finally:
+        amounts = [int(amount) for amount in request.POST.getlist('amount')]
+
+    # For equally Splitting
+        
+    if sum(amounts) == 0 and len(receivers) >= 2:
+        equal_amount = total_amount / len(receivers)
+        equal_amount = round(equal_amount, 2)
+        print(f"Splitted Value => {equal_amount}")
+        for receiver in receivers:
+            form_instance = TransactionForm()
+            transaction = form_instance.save(commit=False)
+            transaction.sender = request.user
+            transaction.receiver = User.objects.get(pk=receiver)
+            transaction.amount = equal_amount
+            transaction.description = description
+            transaction.save()
+        messages.success(request, f'Expenses Split Equally successfully, Each {equal_amount}', {'tag': "success"})
+        return redirect('home')
+    
+    
 
     if total_amount != sum(amounts):
         messages.error(request, "Total amount does not match the sum of participants' amounts.")
@@ -35,6 +87,8 @@ def home(request):
     if len(receivers) != len(amounts):
         messages.error(request, 'Form data lengths are not consistent.')
         return redirect('home')
+    
+    # For Exact Splitting
 
     for receiver, amount in zip(receivers, amounts):
         form_instance = TransactionForm(request.POST)
@@ -48,7 +102,7 @@ def home(request):
         transaction.amount = amount
         transaction.description = description
         transaction.save()
-        messages.success(request, 'Expenses split successfully.', {'tag': "success"})
+    messages.success(request, 'Expenses split successfully.', {'tag': "success"})
 
     return redirect('home')
 
@@ -85,3 +139,35 @@ def balance_view(request):
     print(user_balances)
     return render(request, "balance.html" , {'user_balances': user_balances})
     
+@login_required
+def split_equally(request):
+    if request.method == 'POST':
+        total_amount = int(request.POST.get("total_amount", 0))
+        selected_users = request.POST.getlist('receiver')
+        description = request.POST.get('description')
+
+        print(f"Selected Users => {selected_users}  Total Amount => {total_amount}")
+
+        if not total_amount or not selected_users:
+            messages.error(request, 'Total amount and receivers must be provided.')
+            return redirect('home') 
+
+        num_users = len(selected_users)
+        if num_users == 1:
+            messages.error(request, 'Select at least two users to split equally.')
+            return redirect('home')
+
+        amount_per_user = total_amount / num_users
+
+        current_user = request.user
+        for user_id in selected_users:
+            if int(user_id) != current_user.id: 
+                transaction = Transaction(sender=current_user, receiver_id=user_id, amount=amount_per_user, description=description)
+                transaction.save()
+
+        messages.success(request, 'Expenses split equally among selected users.')
+        return redirect('home') 
+
+    else:
+        messages.error(request, 'Invalid request method.')
+        return redirect('home') 
